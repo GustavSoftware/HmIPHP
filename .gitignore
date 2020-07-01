@@ -1,0 +1,11 @@
+#ignore Eclipse project files
+.project
+.buildpath
+.settings
+composer.lock
+/vendor/
+*.kdev4
+/.idea/
+.phpunit.result.cache
+/data/
+test.php

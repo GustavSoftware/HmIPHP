@@ -1,0 +1,24 @@
+{
+  "name": "gustav/hmiphp",
+  "description": "An interface for communication with a Homematic CCU",
+  "minimum-stability": "stable",
+  "license": "GPL-3.0-only",
+  "authors": [
+    {
+      "name": "Chris Köcher",
+      "email": "ckone@fieselschweif.de"
+    }
+  ],
+  "require": {
+    "php": "^7.4",
+    "ext-curl": "*",
+    "gustav/utils": "^0.1",
+    "gustav/cache": "^0.6.1",
+    "psr/container": "^1.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "Gustav\\HmIPHP\\": "src/"
+    }
+  }
+}
