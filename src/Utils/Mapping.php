@@ -19,7 +19,11 @@
 
 namespace Gustav\HmIPHP\Utils;
 
+use DateInterval;
+use DateTime;
+use Gustav\Cache\CacheException;
 use Gustav\Cache\CacheItem;
+use Gustav\HmIPHP\Connection\ConnectionException;
 use Gustav\HmIPHP\Data\ChannelData;
 use Gustav\HmIPHP\Data\DeviceData;
 use Gustav\HmIPHP\Data\FunctionData;
@@ -28,6 +32,7 @@ use Gustav\HmIPHP\Data\ProgramData;
 use Gustav\HmIPHP\Data\RoomData;
 use Gustav\HmIPHP\Data\VariableData;
 use Gustav\HmIPHP\HmIpException;
+use Psr\Cache\InvalidArgumentException;
 
 /**
  * This class manages the mappings between all of our data objects.
@@ -39,43 +44,173 @@ use Gustav\HmIPHP\HmIpException;
  */
 class Mapping
 {
+    /**
+     * The container.
+     *
+     * @var Container
+     */
     private Container $_container;
 
+    /**
+     * The devices we have already constructed.
+     *
+     * @var DeviceData[]
+     */
     private array $_devices = [];
+
+    /**
+     * The channels we have already constructed.
+     *
+     * @var ChannelData[]
+     */
     private array $_channels = [];
+
+    /**
+     * The channel parameters we have already constructed.
+     *
+     * @var ParameterData[]
+     */
     private array $_parameters = [];
+
+    /**
+     * The rooms we have already constructed.
+     *
+     * @var RoomData[]
+     */
     private array $_rooms = [];
+
+    /**
+     * The functions we have already constructed.
+     *
+     * @var FunctionData[]
+     */
     private array $_functions = [];
+
+    /**
+     * The programs we have already constructed.
+     *
+     * @var ProgramData[]
+     */
     private array $_programs = [];
+
+    /**
+     * The system variables we have already constructed.
+     *
+     * @var VariableData[]
+     */
     private array $_variables = [];
 
+    /**
+     * The map from devices to their channels.
+     *
+     * @var array
+     */
     private array $_devicesToChannels = [];
+
+    /**
+     * The map from channels to their parameters.
+     *
+     * @var array
+     */
     private array $_channelsToParameters = [];
 
+    /**
+     * The map from rooms to their associated channels.
+     *
+     * @var array
+     */
     private array $_roomsToChannels;
+
+    /**
+     * The map from channels to their associated rooms.
+     *
+     * @var array
+     */
     private array $_channelsToRooms;
+
+    /**
+     * The map from channels to their associated functions.
+     *
+     * @var array
+     */
     private array $_channelsToFunctions;
+
+    /**
+     * The map from functions to their associated channels.
+     *
+     * @var array
+     */
     private array $_functionsToChannels;
 
+    /**
+     * The map from device names to their identifiers.
+     *
+     * @var string[]
+     */
     private array $_deviceNamesToIds;
+
+    /**
+     * The map from channel names to their identifiers.
+     *
+     * @var string[]
+     */
     private array $_channelNamesToIds;
+
+    /**
+     * The map from room names to their identifiers.
+     *
+     * @var int[]
+     */
     private array $_roomNamesToIds;
+
+    /**
+     * The map from function names to their identifiers.
+     *
+     * @var int[]
+     */
     private array $_functionNamesToIds;
+
+    /**
+     * The map from program names to their identifiers.
+     *
+     * @var int[]
+     */
     private array $_programNamesToIds;
+
+    /**
+     * The map from system variable names to their identifiers.
+     *
+     * @var int[]
+     */
     private array $_variableNamesToIds;
 
-
-
-    public function __construct()
-    {
-        //TODO?
-    }
-
+    /**
+     * Sets the container.
+     *
+     * @param Container $container
+     *   The container
+     */
     public function setContainer(Container $container): void
     {
         $this->_container = $container;
     }
 
+    /**
+     * Returns the room with the given identifier.
+     *
+     * @param int $roomId
+     *   The room's id
+     * @param bool $checkExistence
+     *   true, if another check of existence is needed, false otherwise
+     * @return RoomData
+     *   The room
+     * @throws CacheException
+     *   Some error occurred while handling the cached data
+     * @throws ConnectionException
+     *   Some HTTP error code occurred
+     * @throws InvalidArgumentException
+     *   Some invalid argument was given to the cache
+     */
     public function getRoom(int $roomId, bool $checkExistence = true): RoomData
     {
         if(!isset($this->_rooms[$roomId])) {
@@ -87,6 +222,18 @@ class Mapping
         return $this->_rooms[$roomId];
     }
 
+    /**
+     * Returns a list of all rooms.
+     *
+     * @return RoomData[]
+     *   The rooms
+     * @throws CacheException
+     *   Some error occurred while handling the cached data
+     * @throws ConnectionException
+     *   Some HTTP error code occurred
+     * @throws InvalidArgumentException
+     *   Some invalid argument was given to the cache
+     */
     public function getRooms(): iterable
     {
         $this->_fetchRoomNames();
@@ -95,12 +242,28 @@ class Mapping
         }
     }
 
+    /**
+     * Returns the room with the given name.
+     *
+     * @param string $roomName
+     *   The room's name
+     * @return RoomData
+     *   The room
+     * @throws CacheException
+     *   Some error occurred while handling the cached data
+     * @throws ConnectionException
+     *   Some HTTP error code occurred
+     * @throws HmIpException
+     *   Unknown room name
+     * @throws InvalidArgumentException
+     *   Some invalid argument was given to the cache
+     */
     public function getRoomByName(string $roomName): RoomData
     {
         $this->_fetchRoomNames();
         $roomName = trim(strtolower($roomName));
         if(!isset($this->_roomNamesToIds[$roomName])) {
-            $roomName = $this->_container->getConfiguration()->getTranslation()->inverseTranslate($roomName);
+            $roomName = $this->_container->getConfiguration()->getTranslator()->inverseTranslate($roomName);
             if(!isset($this->_roomNamesToIds[$roomName])) {
                 throw HmIpException::invalidRoom($roomName);
             }
@@ -109,12 +272,22 @@ class Mapping
         return $this->getRoom($this->_roomNamesToIds[$roomName], false);
     }
 
-    public function getRoomName(int $roomId): string
-    {
-        $data = $this->getRoomData($roomId);
-        return $this->_container->getConfiguration()->getTranslation()->translate($data['name']);
-    }
-
+    /**
+     * Returns the device with the given identifier.
+     *
+     * @param string $deviceId
+     *   The device's id
+     * @param bool $checkExistence
+     *   true, if another check of existence is needed, false otherwise
+     * @return DeviceData
+     *   The device
+     * @throws CacheException
+     *   Some error occurred while handling the cached data
+     * @throws ConnectionException
+     *   Some HTTP error code occurred
+     * @throws InvalidArgumentException
+     *   Some invalid argument was given to the cache
+     */
     public function getDevice(string $deviceId, bool $checkExistence = true): DeviceData
     {
         if(!isset($this->_devices[$deviceId])) {
@@ -126,6 +299,18 @@ class Mapping
         return $this->_devices[$deviceId];
     }
 
+    /**
+     * Returns a list of all devices.
+     *
+     * @return DeviceData[]
+     *   The devices
+     * @throws CacheException
+     *   Some error occurred while handling the cached data
+     * @throws ConnectionException
+     *   Some HTTP error code occurred
+     * @throws InvalidArgumentException
+     *   Some invalid argument was given to the cache
+     */
     public function getDevices(): iterable
     {
         $this->_fetchDeviceNames();
@@ -134,6 +319,22 @@ class Mapping
         }
     }
 
+    /**
+     * Returns the device with the given name.
+     *
+     * @param string $deviceName
+     *   The devices's name
+     * @return DeviceData
+     *   The device
+     * @throws CacheException
+     *   Some error occurred while handling the cached data
+     * @throws ConnectionException
+     *   Some HTTP error code occurred
+     * @throws HmIpException
+     *   Unknown device name
+     * @throws InvalidArgumentException
+     *   Some invalid argument was given to the cache
+     */
     public function getDeviceByName(string $deviceName): DeviceData
     {
         $this->_fetchDeviceNames();
@@ -144,6 +345,22 @@ class Mapping
         return $this->getDevice($this->_deviceNamesToIds[$deviceName], false);
     }
 
+    /**
+     * Returns the device channel with the given identifier.
+     *
+     * @param string $channelId
+     *   The channel's id
+     * @param bool $checkExistence
+     *   true, if another check of existence is needed, false otherwise
+     * @return ChannelData
+     *   The channel
+     * @throws CacheException
+     *   Some error occurred while handling the cached data
+     * @throws ConnectionException
+     *   Some HTTP error code occurred
+     * @throws InvalidArgumentException
+     *   Some invalid argument was given to the cache
+     */
     public function getChannel(string $channelId, bool $checkExistence = true): ChannelData
     {
         if(!isset($this->_channels[$channelId])) {
@@ -156,6 +373,20 @@ class Mapping
         return $this->_channels[$channelId];
     }
 
+    /**
+     * Returns the channels of some device.
+     *
+     * @param string $deviceId
+     *   The device's id
+     * @return ChannelData[]
+     *   The channels
+     * @throws CacheException
+     *   Some error occurred while handling the cached data
+     * @throws ConnectionException
+     *   Some HTTP error code occurred
+     * @throws InvalidArgumentException
+     *   Some invalid argument was given to the cache
+     */
     public function getChannels(string $deviceId): iterable
     {
         if(!isset($this->_devicesToChannels[$deviceId])) {
@@ -172,6 +403,22 @@ class Mapping
         }
     }
 
+    /**
+     * Returns the device channel with the given name.
+     *
+     * @param string $channelName
+     *   The channel's name
+     * @return ChannelData
+     *   The channel
+     * @throws CacheException
+     *   Some error occurred while handling the cached data
+     * @throws ConnectionException
+     *   Some HTTP error code occurred
+     * @throws HmIpException
+     *   Unknown channel name
+     * @throws InvalidArgumentException
+     *   Some invalid argument was given to the cache
+     */
     public function getChannelByName(string $channelName): ChannelData
     {
         $this->_fetchChannelNames();
@@ -182,6 +429,22 @@ class Mapping
         return $this->getChannel($this->_channelNamesToIds[$channelName], false);
     }
 
+    /**
+     * Returns the parameters of some device channel.
+     *
+     * @param string $channelId
+     *   The channel's id
+     * @return ParameterData[]
+     *   The parameters
+     * @throws CacheException
+     *   Some error occurred while handling the cached data
+     * @throws ConnectionException
+     *   Some HTTP error code occurred
+     * @throws HmIpException
+     *   Unknown parameter name
+     * @throws InvalidArgumentException
+     *   Some invalid argument was given to the cache
+     */
     public function getParameters(string $channelId): iterable
     {
         if(!isset($this->_channelsToParameters[$channelId])) {
@@ -198,6 +461,24 @@ class Mapping
         }
     }
 
+    /**
+     * Returns the channel parameter with the given identifier.
+     *
+     * @param string $parameterId
+     *   The parameter's id
+     * @param bool $checkExistence
+     *   true, if another check of existence is needed, false otherwise
+     * @return ParameterData
+     *   The parameter
+     * @throws CacheException
+     *   Some error occurred while handling the cached data
+     * @throws ConnectionException
+     *   Some HTTP error code occurred
+     * @throws HmIpException
+     *   Unknown parameter name
+     * @throws InvalidArgumentException
+     *   Some invalid argument was given to the cache
+     */
     public function getParameter(string $parameterId, bool $checkExistence = true): ParameterData
     {
         if(!isset($this->_parameters[$parameterId])) {
@@ -215,6 +496,20 @@ class Mapping
         return $this->_parameters[$parameterId];
     }
 
+    /**
+     * Returns the rooms of some device channel.
+     *
+     * @param string $channelId
+     *   The channel's id
+     * @return RoomData[]
+     *   The rooms
+     * @throws CacheException
+     *   Some error occurred while handling the cached data
+     * @throws ConnectionException
+     *   Some HTTP error code occurred
+     * @throws InvalidArgumentException
+     *   Some invalid argument was given to the cache
+     */
     public function getRoomsOfChannel(string $channelId): iterable
     {
         if(!isset($this->_channelsToRooms[$channelId])) {
@@ -231,6 +526,20 @@ class Mapping
         }
     }
 
+    /**
+     * Returns the device channels of some room.
+     *
+     * @param int $roomId
+     *   The room'S id
+     * @return ChannelData[]
+     *   The channels
+     * @throws CacheException
+     *   Some error occurred while handling the cached data
+     * @throws ConnectionException
+     *   Some HTTP error code occurred
+     * @throws InvalidArgumentException
+     *   Some invalid argument was given to the cache
+     */
     public function getChannelsOfRoom(int $roomId): iterable
     {
         if(!isset($this->_roomsToChannels[$roomId])) {
@@ -247,6 +556,22 @@ class Mapping
         }
     }
 
+    /**
+     * Returns the function with the given identifier.
+     *
+     * @param int $functionId
+     *   The function's id
+     * @param bool $checkExistence
+     *   true, if another check of existence is needed, false otherwise
+     * @return FunctionData
+     *   The function
+     * @throws CacheException
+     *   Some error occurred while handling the cached data
+     * @throws ConnectionException
+     *   Some HTTP error code occurred
+     * @throws InvalidArgumentException
+     *   Some invalid argument was given to the cache
+     */
     public function getFunction(int $functionId, bool $checkExistence = true): FunctionData
     {
         if(!isset($this->_functions[$functionId])) {
@@ -258,6 +583,18 @@ class Mapping
         return $this->_functions[$functionId];
     }
 
+    /**
+     * Returns a list of all functions.
+     *
+     * @return FunctionData[]
+     *   The functions
+     * @throws CacheException
+     *   Some error occurred while handling the cached data
+     * @throws ConnectionException
+     *   Some HTTP error code occurred
+     * @throws InvalidArgumentException
+     *   Some invalid argument was given to the cache
+     */
     public function getFunctions(): iterable
     {
         $this->_fetchFunctionNames();
@@ -266,12 +603,28 @@ class Mapping
         }
     }
 
+    /**
+     * Returns the function with the given name.
+     *
+     * @param string $functionName
+     *   The function's name
+     * @return FunctionData
+     *   The function
+     * @throws CacheException
+     *   Some error occurred while handling the cached data
+     * @throws ConnectionException
+     *   Some HTTP error code occurred
+     * @throws HmIpException
+     *   Unknown function name
+     * @throws InvalidArgumentException
+     *   Some invalid argument was given to the cache
+     */
     public function getFunctionByName(string $functionName): FunctionData
     {
         $this->_fetchFunctionNames();
         $functionName = trim(strtolower($functionName));
         if(!isset($this->_functionNamesToIds[$functionName])) {
-            $functionName = $this->_container->getConfiguration()->getTranslation()->inverseTranslate($functionName);
+            $functionName = $this->_container->getConfiguration()->getTranslator()->inverseTranslate($functionName);
             if(!isset($this->_functionNamesToIds[$functionName])) {
                 throw HmIpException::invalidFunction($functionName);
             }
@@ -280,6 +633,20 @@ class Mapping
         return $this->getFunction($this->_functionNamesToIds[$functionName], false);
     }
 
+    /**
+     * Returns the device channels of some function.
+     *
+     * @param int $functionId
+     *   The function's id
+     * @return ChannelData[]
+     *   The channel data
+     * @throws CacheException
+     *   Some error occurred while handling the cached data
+     * @throws ConnectionException
+     *   Some HTTP error code occurred
+     * @throws InvalidArgumentException
+     *   Some invalid argument was given to the cache
+     */
     public function getChannelsOfFunction(int $functionId): iterable
     {
         if(!isset($this->_functionsToChannels[$functionId])) {
@@ -296,6 +663,20 @@ class Mapping
         }
     }
 
+    /**
+     * Returns the functions of some channel.
+     *
+     * @param string $channelId
+     *   The channel'S id
+     * @return FunctionData[]
+     *   The functions
+     * @throws CacheException
+     *   Some error occurred while handling the cached data
+     * @throws ConnectionException
+     *   Some HTTP error code occurred
+     * @throws InvalidArgumentException
+     *   Some invalid argument was given to the cache
+     */
     public function getFunctionsOfChannel(string $channelId): iterable
     {
         if(!isset($this->_channelsToFunctions[$channelId])) {
@@ -312,6 +693,22 @@ class Mapping
         }
     }
 
+    /**
+     * Returns the program with the given identifier.
+     *
+     * @param int $programId
+     *   The program's id
+     * @param bool $checkExistence
+     *   true, if another check of existence is needed, false otherwise
+     * @return ProgramData
+     *   The program
+     * @throws CacheException
+     *   Some error occurred while handling the cached data
+     * @throws ConnectionException
+     *   Some HTTP error code occurred
+     * @throws InvalidArgumentException
+     *   Some invalid argument was given to the cache
+     */
     public function getProgram(int $programId, bool $checkExistence = true): ProgramData
     {
         if(!isset($this->_programs[$programId])) {
@@ -323,6 +720,18 @@ class Mapping
         return $this->_programs[$programId];
     }
 
+    /**
+     * Returns a list of all programs.
+     *
+     * @return ProgramData[]
+     *   The programs
+     * @throws CacheException
+     *   Some error occurred while handling the cached data
+     * @throws ConnectionException
+     *   Some HTTP error code occurred
+     * @throws InvalidArgumentException
+     *   Some invalid argument was given to the cache
+     */
     public function getPrograms(): iterable
     {
         $this->_fetchProgramNames();
@@ -331,6 +740,22 @@ class Mapping
         }
     }
 
+    /**
+     * Returns the program with the given name.
+     *
+     * @param string $programName
+     *   The program's name
+     * @return ProgramData
+     *   The program
+     * @throws CacheException
+     *   Some error occurred while handling the cached data
+     * @throws ConnectionException
+     *   Some HTTP error code occurred
+     * @throws HmIpException
+     *   Unknown program name
+     * @throws InvalidArgumentException
+     *   Some invalid argument was given to the cache
+     */
     public function getProgramByName(string $programName): ProgramData
     {
         $this->_fetchProgramNames();
@@ -342,6 +767,22 @@ class Mapping
         return $this->getProgram($this->_programNamesToIds[$programName], false);
     }
 
+    /**
+     * Returns the system variable with the given identifier.
+     *
+     * @param int $variableId
+     *   The identifier of the variable
+     * @param bool $checkExistence
+     *   true, if another check of existence is needed, false otherwise
+     * @return VariableData
+     *   The variable
+     * @throws CacheException
+     *   Some error occurred while handling the cached data
+     * @throws ConnectionException
+     *   Some HTTP error code occurred
+     * @throws InvalidArgumentException
+     *   Some invalid argument was given to the cache
+     */
     public function getVariable(int $variableId, bool $checkExistence = true): VariableData
     {
         if(!isset($this->_variables[$variableId])) {
@@ -353,6 +794,18 @@ class Mapping
         return $this->_variables[$variableId];
     }
 
+    /**
+     * Returns a list of all system variables.
+     *
+     * @return VariableData[]
+     *   The variables
+     * @throws CacheException
+     *   Some error occurred while handling the cached data
+     * @throws ConnectionException
+     *   Some HTTP error code occurred
+     * @throws InvalidArgumentException
+     *   Some invalid argument was given to the cache
+     */
     public function getVariables(): iterable
     {
         $this->_fetchVariableNames();
@@ -361,6 +814,22 @@ class Mapping
         }
     }
 
+    /**
+     * Returns the system variable with the given name.
+     *
+     * @param string $variableName
+     *   The variable's name
+     * @return VariableData
+     *   The variable
+     * @throws CacheException
+     *   Some error occurred while handling the cached data
+     * @throws ConnectionException
+     *   Some HTTP error code occurred
+     * @throws HmIpException
+     *   Unknown variable name
+     * @throws InvalidArgumentException
+     *   Some invalid argument was given to the cache
+     */
     public function getVariableByName(string $variableName): VariableData
     {
         $this->_fetchVariableNames();
@@ -372,6 +841,20 @@ class Mapping
         return $this->getVariable($this->_variableNamesToIds[$variableName], false);
     }
 
+    /**
+     * Returns the data of some device.
+     *
+     * @param string $deviceId
+     *   The identifier of the device
+     * @return array
+     *   The data
+     * @throws CacheException
+     *   Some error occurred while handling the cached data
+     * @throws ConnectionException
+     *   Some HTTP error code occurred
+     * @throws InvalidArgumentException
+     *   Some invalid argument was given to the cache
+     */
     public function getDeviceData(string $deviceId): array
     {
         $cache = $this->_container->getCacheManager()->getItemPool("deviceData");
@@ -398,13 +881,27 @@ class Mapping
             }
 
             $cache->saveDeferred(
-                new CacheItem($deviceId, $data, true, $cache, (new \DateTime())->add(new \DateInterval("P1M")))
+                new CacheItem($deviceId, $data, true, $cache, (new DateTime())->add(new DateInterval("P1M")))
             );
 
             return $data;
         }
     }
 
+    /**
+     * Returns the data of some device's channel.
+     *
+     * @param string $channelId
+     *   The identifier of the channel
+     * @return array
+     *   The data
+     * @throws CacheException
+     *   Some error occurred while handling the cached data
+     * @throws ConnectionException
+     *   Some HTTP error code occurred
+     * @throws InvalidArgumentException
+     *   Some invalid argument was given to the cache
+     */
     public function getChannelData(string $channelId): array
     {
         $cache = $this->_container->getCacheManager()->getItemPool("channelData");
@@ -436,13 +933,27 @@ class Mapping
             }
 
             $cache->saveDeferred(
-                new CacheItem($channelId, $data, true, $cache, (new \DateTime())->add(new \DateInterval("P1M")))
+                new CacheItem($channelId, $data, true, $cache, (new DateTime())->add(new DateInterval("P1M")))
             );
 
             return $data;
         }
     }
 
+    /**
+     * Returns the data of some room.
+     *
+     * @param int $roomId
+     *   The identifier of the room
+     * @return array
+     *   The data
+     * @throws CacheException
+     *   Some error occurred while handling the cached data
+     * @throws ConnectionException
+     *   Some HTTP error code occurred
+     * @throws InvalidArgumentException
+     *   Some invalid argument was given to the cache
+     */
     public function getRoomData(int $roomId): array
     {
         $cache = $this->_container->getCacheManager()->getItemPool("roomData");
@@ -462,12 +973,26 @@ class Mapping
                 $data['channels'][] = substr($channel->href, 8); //|/device/|=8
             }
             $cache->saveDeferred(
-                new CacheItem($roomId, $data, true, $cache, (new \DateTime())->add(new \DateInterval("P1M")))
+                new CacheItem($roomId, $data, true, $cache, (new DateTime())->add(new DateInterval("P1M")))
             );
             return $data;
         }
     }
 
+    /**
+     * Returns the data of some function.
+     *
+     * @param int $functionId
+     *   The identifier of the function
+     * @return array
+     *   The data
+     * @throws CacheException
+     *   Some error occurred while handling the cached data
+     * @throws ConnectionException
+     *   Some HTTP error code occurred
+     * @throws InvalidArgumentException
+     *   Some invalid argument was given to the cache
+     */
     public function getFunctionData(int $functionId): array
     {
         $cache = $this->_container->getCacheManager()->getItemPool("functionData");
@@ -487,12 +1012,26 @@ class Mapping
                 $data['channels'][] = substr($channel->href, 8); //|/device/|=8
             }
             $cache->saveDeferred(
-                new CacheItem($functionId, $data, true, $cache, (new \DateTime())->add(new \DateInterval("P1M")))
+                new CacheItem($functionId, $data, true, $cache, (new DateTime())->add(new DateInterval("P1M")))
             );
             return $data;
         }
     }
 
+    /**
+     * Returns the data of some channel parameter.
+     *
+     * @param int $parameterId
+     *   The identifier of the parameter
+     * @return array
+     *   The data
+     * @throws CacheException
+     *   Some error occurred while handling the cached data
+     * @throws ConnectionException
+     *   Some HTTP error code occurred
+     * @throws InvalidArgumentException
+     *   Some invalid argument was given to the cache
+     */
     public function getParameterData($parameterId): array
     {
         $cache = $this->_container->getCacheManager()->getItemPool("parameterData");
@@ -506,12 +1045,26 @@ class Mapping
                 'unit' => trim($result->unit)
             ];
             $cache->saveDeferred(
-                new CacheItem($parameterId, $data, true, $cache, (new \DateTime())->add(new \DateInterval("P1M")))
+                new CacheItem($parameterId, $data, true, $cache, (new DateTime())->add(new DateInterval("P1M")))
             );
             return $data;
         }
     }
 
+    /**
+     * Returns the data of some program.
+     *
+     * @param int $programId
+     *   The identifier of the program
+     * @return array
+     *   The data
+     * @throws CacheException
+     *   Some error occurred while handling the cached data
+     * @throws ConnectionException
+     *   Some HTTP error code occurred
+     * @throws InvalidArgumentException
+     *   Some invalid argument was given to the cache
+     */
     public function getProgramData(int $programId): array
     {
         $cache = $this->_container->getCacheManager()->getItemPool("programData");
@@ -526,12 +1079,26 @@ class Mapping
                 'visible' => (bool) $result->visible
             ];
             $cache->saveDeferred(
-                new CacheItem($programId, $data, true, $cache, (new \DateTime())->add(new \DateInterval("P1M")))
+                new CacheItem($programId, $data, true, $cache, (new DateTime())->add(new DateInterval("P1M")))
             );
             return $data;
         }
     }
 
+    /**
+     * Returns the data of some system variable.
+     *
+     * @param int $variableId
+     *   The identifier of the variable
+     * @return array
+     *   The data
+     * @throws CacheException
+     *   Some error occurred while handling the cached data
+     * @throws ConnectionException
+     *   Some HTTP error code occurred
+     * @throws InvalidArgumentException
+     *   Some invalid argument was given to the cache
+     */
     public function getVariableData(int $variableId): array
     {
         $cache = $this->_container->getCacheManager()->getItemPool("variableData");
@@ -546,12 +1113,22 @@ class Mapping
                 'unit' => trim($result->unit)
             ];
             $cache->saveDeferred(
-                new CacheItem($variableId, $data, true, $cache, (new \DateTime())->add(new \DateInterval("P1M")))
+                new CacheItem($variableId, $data, true, $cache, (new DateTime())->add(new DateInterval("P1M")))
             );
             return $data;
         }
     }
 
+    /**
+     * Fetches the names of rooms from the CCU.
+     *
+     * @throws CacheException
+     *   Some error occurred while handling the cached data
+     * @throws ConnectionException
+     *   Some HTTP error code occurred
+     * @throws InvalidArgumentException
+     *   Some invalid argument was given to the cache
+     */
     private function _fetchRoomNames(): void
     {
         if(isset($this->_roomNamesToIds)) {
@@ -569,13 +1146,23 @@ class Mapping
                 $namesToIds[trim(strtolower($room->title))] = (int) $room->href;
             }
 
-            $duration = (new \DateTime())->add(new \DateInterval("P1M"));
+            $duration = (new DateTime())->add(new DateInterval("P1M"));
             $cache->save(new CacheItem("namesToIds", $namesToIds, true, $cache, $duration));
         }
 
         $this->_roomNamesToIds = $cache->getItem("namesToIds")->get();
     }
 
+    /**
+     * Fetches the names of devices from the CCU.
+     *
+     * @throws CacheException
+     *   Some error occurred while handling the cached data
+     * @throws ConnectionException
+     *   Some HTTP error code occurred
+     * @throws InvalidArgumentException
+     *   Some invalid argument was given to the cache
+     */
     private function _fetchDeviceNames(): void
     {
         if(isset($this->_deviceNamesToIds)) {
@@ -593,13 +1180,23 @@ class Mapping
                 $namesToIds[trim(strtolower($device->title))] = $device->href;
             }
 
-            $duration = (new \DateTime())->add(new \DateInterval("P1M"));
+            $duration = (new DateTime())->add(new DateInterval("P1M"));
             $cache->save(new CacheItem("namesToIds", $namesToIds, true, $cache, $duration));
         }
 
         $this->_deviceNamesToIds = $cache->getItem("namesToIds")->get();
     }
 
+    /**
+     * Fetches the names of channels from the CCU.
+     *
+     * @throws CacheException
+     *   Some error occurred while handling the cached data
+     * @throws ConnectionException
+     *   Some HTTP error code occurred
+     * @throws InvalidArgumentException
+     *   Some invalid argument was given to the cache
+     */
     private function _fetchChannelNames(): void
     {
         if(isset($this->_channelNamesToIds)) {
@@ -621,13 +1218,23 @@ class Mapping
                 }
             }
 
-            $duration = (new \DateTime())->add(new \DateInterval("P1M"));
+            $duration = (new DateTime())->add(new DateInterval("P1M"));
             $cache->save(new CacheItem("namesToIds", $namesToIds, true, $cache, $duration));
         }
 
         $this->_channelNamesToIds = $cache->getItem("namesToIds")->get();
     }
 
+    /**
+     * Fetches the names of functions from the CCU.
+     *
+     * @throws CacheException
+     *   Some error occurred while handling the cached data
+     * @throws ConnectionException
+     *   Some HTTP error code occurred
+     * @throws InvalidArgumentException
+     *   Some invalid argument was given to the cache
+     */
     private function _fetchFunctionNames(): void
     {
         if(isset($this->_functionNamesToIds)) {
@@ -645,13 +1252,23 @@ class Mapping
                 $namesToIds[trim(strtolower($function->title))] = (int) $function->href;
             }
 
-            $duration = (new \DateTime())->add(new \DateInterval("P1M"));
+            $duration = (new DateTime())->add(new DateInterval("P1M"));
             $cache->save(new CacheItem("namesToIds", $namesToIds, true, $cache, $duration));
         }
 
         $this->_functionNamesToIds = $cache->getItem("namesToIds")->get();
     }
 
+    /**
+     * Fetches the names of programs from the CCU.
+     *
+     * @throws CacheException
+     *   Some error occurred while handling the cached data
+     * @throws ConnectionException
+     *   Some HTTP error code occurred
+     * @throws InvalidArgumentException
+     *   Some invalid argument was given to the cache
+     */
     private function _fetchProgramNames(): void
     {
         if(isset($this->_programNamesToIds)) {
@@ -669,13 +1286,23 @@ class Mapping
                 $namesToIds[trim(strtolower($program->title))] = (int) $program->href;
             }
 
-            $duration = (new \DateTime())->add(new \DateInterval("P1M"));
+            $duration = (new DateTime())->add(new DateInterval("P1M"));
             $cache->save(new CacheItem("namesToIds", $namesToIds, true, $cache, $duration));
         }
 
         $this->_programNamesToIds = $cache->getItem("namesToIds")->get();
     }
 
+    /**
+     * Fetches the names of system variables from the CCU.
+     *
+     * @throws CacheException
+     *   Some error occurred while handling the cached data
+     * @throws ConnectionException
+     *   Some HTTP error code occurred
+     * @throws InvalidArgumentException
+     *   Some invalid argument was given to the cache
+     */
     private function _fetchVariableNames(): void
     {
         if(isset($this->_variableNamesToIds)) {
@@ -693,7 +1320,7 @@ class Mapping
                 $namesToIds[trim(strtolower($variable->title))] = (int) $variable->href;
             }
 
-            $duration = (new \DateTime())->add(new \DateInterval("P1M"));
+            $duration = (new DateTime())->add(new DateInterval("P1M"));
             $cache->save(new CacheItem("namesToIds", $namesToIds, true, $cache, $duration));
         }
 

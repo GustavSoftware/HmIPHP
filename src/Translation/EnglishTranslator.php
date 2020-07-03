@@ -19,20 +19,32 @@
 
 namespace Gustav\HmIPHP\Translation;
 
-class GermanTranslation extends ATranslation
+/**
+ * This class is used for translation of some internal strings into English ones.
+ *
+ * @author Chris Köcher <ckone@fieselschweif.de>
+ * @link   https://gustav.fieselschweif.de
+ * @since  1.0.0
+ */
+class EnglishTranslator extends ATranslator
 {
+    /**
+     * The map of translations.
+     *
+     * @var string[]
+     */
     protected array $_translations = [
-        'roombathroom' => "Badezimmer",
-        'roombedroom' => "Schlafzimmer",
-        'roomkitchen' => "Küche",
-        'roomlivingroom' => "Wohnzimmer",
-        'funcbutton' => "Taster",
-        'funccentral' => "Zentrale",
-        'funcclimatecontrol' => "Klima",
-        'funcenergy' => "Energiemanagement",
-        'funcheating' => "Heizung",
-        'funclock' => "Verschluss",
-        'funcsecurity' => "Sicherheit",
-        'funcweather' => "Wetter"
+        'roombathroom' => "Bathroom",
+        'roombedroom' => "Bedroom",
+        'roomkitchen' => "Kitchen",
+        'roomlivingroom' => "Living room",
+        'funcbutton' => "Button",
+        'funccentral' => "Central",
+        'funcclimatecontrol' => "Climate control",
+        'funcenergy' => "Energy",
+        'funcheating' => "Heating",
+        'funclock' => "Lock",
+        'funcsecurity' => "Security",
+        'funcweather' => "Weather"
     ];
 }

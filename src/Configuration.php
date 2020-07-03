@@ -20,51 +20,121 @@
 namespace Gustav\HmIPHP;
 
 use Gustav\Cache\Configuration as CacheConfiguration;
-use Gustav\HmIPHP\Translation\ATranslation;
-use Gustav\HmIPHP\Translation\EnglishTranslation;
+use Gustav\HmIPHP\Translation\ATranslator;
+use Gustav\HmIPHP\Translation\EnglishTranslator;
 
+/**
+ * This class contains the configurations of the controller.
+ *
+ * @author Chris Köcher <ckone@fieselschweif.de>
+ * @link   https://gustav.fieselschweif.de
+ * @since  1.0.0
+ * @api
+ */
 class Configuration
 {
+    /**
+     * The configuration of the cache.
+     *
+     * @var CacheConfiguration
+     */
     private CacheConfiguration $_cacheConfig;
-    private string $_baseUrl = "https://ccu3-webui:2122";
-    private ATranslation $_translation;
 
+    /**
+     * The URL to the CCU Jack.
+     *
+     * @var string
+     */
+    private string $_baseUrl = "https://ccu3-webui:2122";
+
+    /**
+     * The translation of the data. By default this is english.
+     *
+     * @var ATranslator
+     */
+    private ATranslator $_translator;
+
+    /**
+     * Constructor of this class.
+     */
     public function __construct()
     {
         $this->_cacheConfig = new CacheConfiguration();
-        $this->_translation = new EnglishTranslation();
+        $this->_translator = new EnglishTranslator();
     }
 
+    /**
+     * Sets the configuration of the cache. Note that this must be set before the construction of the controller.
+     *
+     * @param CacheConfiguration $cacheConfig
+     *   The configuration
+     * @return $this
+     *   This object
+     */
     public function setCacheConfig(CacheConfiguration $cacheConfig): self
     {
         $this->_cacheConfig = $cacheConfig;
         return $this;
     }
 
+    /**
+     * Returns the configuration of the cache.
+     *
+     * @return CacheConfiguration
+     *   The configuration
+     */
     public function getCacheConfig(): CacheConfiguration
     {
         return $this->_cacheConfig;
     }
 
+    /**
+     * Sets the URL of the CCU Jack.
+     *
+     * @param string $baseUrl
+     *   The URL
+     * @return $this
+     *   The object
+     */
     public function setBaseUrl(string $baseUrl): self
     {
         $this->_baseUrl = $baseUrl;
         return $this;
     }
 
+    /**
+     * Returns the URL of the CCU Jack.
+     *
+     * @return string
+     *   The URL
+     */
     public function getBaseUrl(): string
     {
         return $this->_baseUrl;
     }
 
-    public function setTranslation(ATranslation $translation): self
+    /**
+     * Sets the translation of the data.
+     *
+     * @param ATranslator $translation
+     *   The translation object
+     * @return $this
+     *   The object
+     */
+    public function setTranslator(ATranslator $translation): self
     {
-        $this->_translation = $translation;
+        $this->_translator = $translation;
         return $this;
     }
 
-    public function getTranslation(): ATranslation
+    /**
+     * Returns the translation of the data.
+     *
+     * @return ATranslator
+     *   The translation object
+     */
+    public function getTranslator(): ATranslator
     {
-        return $this->_translation;
+        return $this->_translator;
     }
 }

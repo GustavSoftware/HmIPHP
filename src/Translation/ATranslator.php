@@ -19,10 +19,30 @@
 
 namespace Gustav\HmIPHP\Translation;
 
-abstract class ATranslation
+/**
+ * This class is used for translation of some internal strings.
+ *
+ * @author Chris Köcher <ckone@fieselschweif.de>
+ * @link   https://gustav.fieselschweif.de
+ * @since  1.0.0
+ */
+abstract class ATranslator
 {
+    /**
+     * The map of translations.
+     *
+     * @var string[]
+     */
     protected array $_translations;
 
+    /**
+     * Translates the given string.
+     *
+     * @param string $key
+     *   The string to translate
+     * @return string
+     *   The translated string (or the key if no translation is available)
+     */
     public function translate(string $key): string
     {
         $lKey = strtolower($key);
@@ -32,6 +52,14 @@ abstract class ATranslation
         return $key;
     }
 
+    /**
+     * Translates the given string back to Homematic's representation.
+     *
+     * @param string $value
+     *   The value to translate back
+     * @return string
+     *   The corresponding key (or the value if inverse translation is not possible)
+     */
     public function inverseTranslate(string $value): string
     {
         $key = array_search($value, $this->_translations);

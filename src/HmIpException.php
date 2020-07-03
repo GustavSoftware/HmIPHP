@@ -19,57 +19,133 @@
 
 namespace Gustav\HmIPHP;
 
+use Exception;
 use Gustav\Utils\GustavException;
 
+/**
+ * This class represents exceptions when loading data from the CCU.
+ *
+ * @author Chris Köcher <ckone@fieselschweif.de>
+ * @link   https://gustav.fieselschweif.de
+ * @since  1.0.0
+ */
 class HmIpException extends GustavException
 {
-    public const INVALID_CALL = 1;
-    public const INVALID_ROOM = 2;
-    public const INVALID_DEVICE = 3;
-    public const INVALID_CHANNEL = 4;
-    public const INVALID_PARAMETER = 5;
-    public const INVALID_FUNCTION = 6;
-    public const INVALID_PROGRAM = 7;
-    public const INVALID_VARIABLE = 8;
+    /**
+     * The error codes.
+     *
+     * @var int
+     */
+    public const INVALID_ROOM = 1;
+    public const INVALID_DEVICE = 2;
+    public const INVALID_CHANNEL = 3;
+    public const INVALID_PARAMETER = 4;
+    public const INVALID_FUNCTION = 5;
+    public const INVALID_PROGRAM = 6;
+    public const INVALID_VARIABLE = 7;
 
-    public static function invalidCall(string $func, ?\Exception $exception = null): self
-    {
-        return new self("invalid call of {$func}", self::INVALID_CALL, $exception);
-    }
-
-    public static function invalidRoom(string $room, ?\Exception $exception = null): self
+    /**
+     * Creates an exception when the room with the given name does not exist.
+     *
+     * @param string $room
+     *   The room's name
+     * @param Exception|null $exception
+     *   Previous exception
+     * @return self
+     *   The exception
+     */
+    public static function invalidRoom(string $room, ?Exception $exception = null): self
     {
         return new self("invalid room \"{$room}\"", self::INVALID_ROOM, $exception);
     }
 
-    public static function invalidDevice(string $device, ?\Exception $exception = null): self
+    /**
+     * Creates an exception when the device with the given name does not exist.
+     *
+     * @param string $device
+     *   The device's name
+     * @param Exception|null $exception
+     *   Previous exception
+     * @return self
+     *   The exception
+     */
+    public static function invalidDevice(string $device, ?Exception $exception = null): self
     {
         return new self("invalid device \"{$device}\"", self::INVALID_DEVICE, $exception);
     }
 
-    public static function invalidChannel(string $channel, ?\Exception $exception = null): self
+    /**
+     * Creates an exception when the device channel with the given name does not exist.
+     *
+     * @param string $channel
+     *   The channel's name
+     * @param Exception|null $exception
+     *   Previous exception
+     * @return self
+     *   The exception
+     */
+    public static function invalidChannel(string $channel, ?Exception $exception = null): self
     {
         return new self("invalid channel \"{$channel}\"", self::INVALID_CHANNEL, $exception);
     }
 
-    public static function invalidParameter(string $parameter, ?\Exception $exception = null): self
+    /**
+     * Creates an exception when the channel parameter with the given name does not exist.
+     *
+     * @param string $parameter
+     *   The parameter's name
+     * @param Exception|null $exception
+     *   Previous exception
+     * @return self
+     *   The exception
+     */
+    public static function invalidParameter(string $parameter, ?Exception $exception = null): self
     {
         return new self("invalid parameter \"{$parameter}\"", self::INVALID_PARAMETER, $exception);
     }
 
-    public static function invalidFunction(string $function, ?\Exception $exception = null): self
+    /**
+     * Creates an exception when the function with the given name does not exist.
+     *
+     * @param string $function
+     *   The function's name
+     * @param Exception|null $exception
+     *   Previous exception
+     * @return self
+     *   The exception
+     */
+    public static function invalidFunction(string $function, ?Exception $exception = null): self
     {
         return new self("invalid function \"{$function}\"", self::INVALID_FUNCTION, $exception);
     }
 
-    public static function invalidProgram(string $program, ?\Exception $exception = null): self
+    /**
+     * Creates an exception when the program with the given name does not exist.
+     *
+     * @param string $program
+     *   The program's name
+     * @param Exception|null $exception
+     *   Previous exception
+     * @return self
+     *   The exception
+     */
+    public static function invalidProgram(string $program, ?Exception $exception = null): self
     {
         return new self("invalid program \"{$program}\"", self::INVALID_PROGRAM, $exception);
     }
 
-    public static function invalidVariable(string $variable, ?\Exception $exception = null): self
+    /**
+     * Creates an exception when the variable with the given name does not exist.
+     *
+     * @param string $variable
+     *   The variable's name
+     * @param Exception|null $exception
+     *   Previous exception
+     * @return self
+     *   The exception
+     */
+    public static function invalidVariable(string $variable, ?Exception $exception = null): self
     {
         return new self("invalid variable \"{$variable}\"", self::INVALID_VARIABLE, $exception);
     }
-    //TODO!
 }

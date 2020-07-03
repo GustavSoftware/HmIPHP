@@ -19,13 +19,39 @@
 
 namespace Gustav\HmIPHP\Connection;
 
+use Exception;
 use Gustav\HmIPHP\HmIpException;
 
+/**
+ * This class represents exceptions when connecting to the Homematic CCU.
+ *
+ * @author Chris Köcher <ckone@fieselschweif.de>
+ * @link   https://gustav.fieselschweif.de
+ * @since  1.0.0
+ */
 class ConnectionException extends HmIpException
 {
+    /**
+     * The error codes.
+     *
+     * @var int
+     */
     public const ERROR_CODE = 1;
 
-    public static function errorCode(int $code, string $url, ?\Exception $exception = null): self
+    /**
+     * Creates an exception when the connection to the Homematic CCU returns a page with an HTTP code different from
+     * 200.
+     *
+     * @param int $code
+     *   The error code
+     * @param string $url
+     *   The called url
+     * @param Exception|null $exception
+     *   Previous exception
+     * @return self
+     *   The exception
+     */
+    public static function errorCode(int $code, string $url, ?Exception $exception = null): self
     {
         return new self(
             "error with no. {$code} occurred on call of \"{$url}\"",
@@ -33,5 +59,4 @@ class ConnectionException extends HmIpException
             $exception
         );
     }
-    //TODO!
 }

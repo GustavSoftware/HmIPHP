@@ -19,13 +19,30 @@
 
 namespace Gustav\HmIPHP\Data;
 
-
 use Gustav\HmIPHP\Utils\Container;
 
+/**
+ * This is an interface for the data from the CCU.
+ *
+ * @author Chris Köcher <ckone@fieselschweif.de>
+ * @link   https://gustav.fieselschweif.de
+ * @since  1.0.0
+ */
 abstract class AData
 {
+    /**
+     * The container
+     *
+     * @var Container
+     */
     protected Container $_container;
 
+    /**
+     * Constructor of this class.
+     *
+     * @param Container $container
+     *   The container
+     */
     public function __construct(Container $container)
     {
         $this->_container = $container;

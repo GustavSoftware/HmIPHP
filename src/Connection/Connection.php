@@ -21,15 +21,44 @@ namespace Gustav\HmIPHP\Connection;
 
 use Gustav\HmIPHP\Configuration;
 
+/**
+ * The connection to the CCU.
+ *
+ * @author Chris Köcher <ckone@fieselschweif.de>
+ * @link   https://gustav.fieselschweif.de
+ * @since  1.0.0
+ * @internal
+ */
 class Connection
 {
+    /**
+     * The configuration of the controller and this connection.
+     *
+     * @var Configuration
+     */
     private Configuration $_config;
 
+    /**
+     * Constructor of this class.
+     *
+     * @param Configuration $config
+     *   The configuration
+     */
     public function __construct(Configuration $config)
     {
         $this->_config = $config;
     }
 
+    /**
+     * Returns the data from the CCU on the given path.
+     *
+     * @param string[] $path
+     *   The path
+     * @return mixed
+     *   The returned data
+     * @throws ConnectionException
+     *   HTTP Error occurred
+     */
     public function getData(array $path)
     {
         $url = $this->_config->getBaseUrl() . "/" . implode("/", $path);
@@ -50,6 +79,18 @@ class Connection
         return json_decode($data);
     }
 
+    /**
+     * Sets the data on some path on the CCU.
+     *
+     * @param mixed $data
+     *   The new data
+     * @param string[] $path
+     *   The path
+     * @return bool
+     *   true, if connection was successful, false otherwise
+     * @throws ConnectionException
+     *   HTTP error occurred
+     */
     public function setData($data, array $path): bool
     {
         $url = $this->_config->getBaseUrl() . "/" . implode("/", $path);
