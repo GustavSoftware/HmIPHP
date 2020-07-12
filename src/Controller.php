@@ -409,12 +409,14 @@ class Controller
     public function __destruct()
     {
         $cacheManager = $this->_container->getCacheManager();
-        $cacheManager->getItemPool("parameters")->commit();
-        $cacheManager->getItemPool("variables")->commit();
-        $cacheManager->getItemPool("parameterData")->commit();
-        $cacheManager->getItemPool("variableData")->commit();
-        $cacheManager->getItemPool("deviceData")->commit();
-        $cacheManager->getItemPool("channelData")->commit();
-        $cacheManager->getItemPool("roomData")->commit();
+
+        $caches = [
+            "parameters", "variables", "parameterData", "variableData", "deviceData", "channelData", "roomData"
+        ];
+        foreach($caches as $pool) {
+            if($cacheManager->isOpened($pool)) {
+                $cacheManager->getItemPool($pool)->commit();
+            }
+        }
     }
 }

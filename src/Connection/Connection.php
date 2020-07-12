@@ -20,6 +20,8 @@
 namespace Gustav\HmIPHP\Connection;
 
 use Gustav\HmIPHP\Configuration;
+use GuzzleHttp\Psr7\Request;
+use Psr\Http\Client\ClientExceptionInterface;
 
 /**
  * The connection to the CCU.
@@ -62,21 +64,9 @@ class Connection
     public function getData(array $path)
     {
         $url = $this->_config->getBaseUrl() . "/" . implode("/", $path);
+        $request = new Request("GET", $url);
 
-        $curl = curl_init();
-        curl_setopt($curl, CURLOPT_URL, $url);
-        curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($curl, CURLOPT_HEADER, false);
-        $data = curl_exec($curl);
-
-        $code = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
-        curl_close($curl);
-
-        if($code !== 200) {
-            throw ConnectionException::errorCode($code, $url);
-        }
-        return json_decode($data);
+        return json_decode($this->_sendRequest($url, $request));
     }
 
     /**
@@ -95,22 +85,37 @@ class Connection
     {
         $url = $this->_config->getBaseUrl() . "/" . implode("/", $path);
         $json = json_encode($data);
+        $request = new Request(
+            "PUT", $url, ['Content-Type: application/json','Content-Length: '.strlen($json)], $json
+        );
 
-        $curl = curl_init();
-        curl_setopt($curl, CURLOPT_URL, $url);
-        curl_setopt($curl, CURLOPT_HTTPHEADER, ['Content-Type: application/json','Content-Length: '.strlen($json)]);
-        curl_setopt($curl, CURLOPT_CUSTOMREQUEST, 'PUT');
-        curl_setopt($curl, CURLOPT_POSTFIELDS, $json);
-        curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);
-        $return = curl_exec($curl);
+        $this->_sendRequest($url, $request);
+        return true;
+    }
 
-        $code = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
-        curl_close($curl);
-
-        if($code !== 200) {
-            throw ConnectionException::errorCode($code, $url);
+    /**
+     * Sends a request to the given URL.
+     *
+     * @param string $url
+     *   The URL
+     * @param Request $request
+     *   The request data
+     * @return mixed
+     *   The returned data
+     * @throws ConnectionException
+     *   HTTP error occurred
+     */
+    private function _sendRequest(string $url, Request $request)
+    {
+        try {
+            $response = $this->_config->getHttpClient()->sendRequest($request);
+        } catch(ClientExceptionInterface $e) {
+            throw ConnectionException::requestError($url, $e);
         }
 
-        return $return;
+        if($response->getStatusCode() !== 200) {
+            throw ConnectionException::errorCode($response->getStatusCode(), $url);
+        }
+        return $response->getBody();
     }
 }

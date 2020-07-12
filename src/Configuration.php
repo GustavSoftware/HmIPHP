@@ -22,6 +22,8 @@ namespace Gustav\HmIPHP;
 use Gustav\Cache\Configuration as CacheConfiguration;
 use Gustav\HmIPHP\Translation\ATranslator;
 use Gustav\HmIPHP\Translation\EnglishTranslator;
+use GuzzleHttp\Client;
+use Psr\Http\Client\ClientInterface;
 
 /**
  * This class contains the configurations of the controller.
@@ -55,12 +57,20 @@ class Configuration
     private ATranslator $_translator;
 
     /**
+     * An HTTP client (as in PSR-18). By default this is the client from GuzzleHttp
+     *
+     * @var ClientInterface
+     */
+    private ClientInterface $_httpClient;
+
+    /**
      * Constructor of this class.
      */
     public function __construct()
     {
         $this->_cacheConfig = new CacheConfiguration();
         $this->_translator = new EnglishTranslator();
+        $this->_httpClient = new Client();
     }
 
     /**
@@ -94,7 +104,7 @@ class Configuration
      * @param string $baseUrl
      *   The URL
      * @return $this
-     *   The object
+     *   This object
      */
     public function setBaseUrl(string $baseUrl): self
     {
@@ -119,7 +129,7 @@ class Configuration
      * @param ATranslator $translation
      *   The translation object
      * @return $this
-     *   The object
+     *   This object
      */
     public function setTranslator(ATranslator $translation): self
     {
@@ -136,5 +146,30 @@ class Configuration
     public function getTranslator(): ATranslator
     {
         return $this->_translator;
+    }
+
+    /**
+     * Sets the HTTP client to use here.
+     *
+     * @param ClientInterface $client
+     *   The client
+     * @return $this
+     *   This object
+     */
+    public function setHttpClient(ClientInterface $client): self
+    {
+        $this->_httpClient = $client;
+        return $this;
+    }
+
+    /**
+     * Returns the HTTP client to use here.
+     *
+     * @return ClientInterface
+     *   The client
+     */
+    public function getHttpClient(): ClientInterface
+    {
+        return $this->_httpClient;
     }
 }

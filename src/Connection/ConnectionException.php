@@ -37,6 +37,7 @@ class ConnectionException extends HmIpException
      * @var int
      */
     public const ERROR_CODE = 1;
+    public const REQUEST_ERROR = 2;
 
     /**
      * Creates an exception when the connection to the Homematic CCU returns a page with an HTTP code different from
@@ -58,5 +59,20 @@ class ConnectionException extends HmIpException
             self::ERROR_CODE,
             $exception
         );
+    }
+
+    /**
+     * Creates an exception when some error occurred on HTTP request.
+     *
+     * @param string $url
+     *   The called url
+     * @param Exception|null $exception
+     *   Previous exception
+     * @return self
+     *   The exception
+     */
+    public static function requestError(string $url, ?Exception $exception = null): self
+    {
+        return new self("error on call of \"{$url}\"", self::REQUEST_ERROR, $exception);
     }
 }
